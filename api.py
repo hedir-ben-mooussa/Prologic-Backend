@@ -1,71 +1,69 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS, cross_origin
+import eventlet
+eventlet.monkey_patch()
+import json
 from datetime import datetime
-from db.index import SensorType, Sensors, init_app
+from services.database import MySQLSingleton
+from flask import Flask, jsonify
+from flask_mqtt import Mqtt
+from flask_socketio import SocketIO
+from flask_bootstrap import Bootstrap
 
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
+app.app_context()
 
-db=init_app(app)
+app.config['TEMPLATES_AUTO_RELOAD'] = True
+app.config['MQTT_BROKER_URL'] = '192.168.1.18'
+app.config['MQTT_BROKER_PORT'] = 1883
+app.config['MQTT_USERNAME'] = ''
+app.config['MQTT_PASSWORD'] = ''
+app.config['MQTT_KEEPALIVE'] = 5
+app.config['MQTT_TLS_ENABLED'] = False
+
+mqtt = Mqtt(app)
+socketio = SocketIO(app)
+bootstrap = Bootstrap(app)
+
+mysqlClient = MySQLSingleton(user='root', password='',host='localhost', database='prologic_db')
+
+@app.route('/getTemperature', methods=["GET"])
+def getTemperature():
+    temperature_values = mysqlClient.get_temperature_values()
+    return jsonify({'temperature_values': temperature_values})
+
+@app.route('/getGas', methods=["GET"])
+def getGas():
+    gas_values = mysqlClient.get_gas_values()
+    return jsonify({'gas_values': gas_values})
+
+@app.route('/getHumidity', methods=["GET"])
+def getHumidity():
+    humidity_values = mysqlClient.get_humidity_values()
+    return jsonify({'humidity_values': humidity_values})
 
 
-@app.route('/',methods=["GET"])
-def hello():
-    name = request.args.get("name", "world")
-    return 'Hello'
+@mqtt.on_connect()
+def handle_connect(client, userdata, flags, rc):
+    mqtt.subscribe('datacenter/temperature')
+    mqtt.subscribe('maison/salon/humidity')
+    mqtt.subscribe('maison/salon/gas')
+    mqtt.subscribe('maison/salon/flame')
+    print('MQTT Connected')
 
-# Create a sensor
-@app.route('/sensor', methods=['POST'])
-def create_sensor():
-    data = request.get_json()
-    new_sensor = Sensors(date=datetime.now(),
-                         value=data['value'],
-                         maxValue=data['maxValue'],
-                         sensortype=SensorType[data['sensortype']])
-    print("zz",new_sensor)
-    db.session.add(new_sensor)
-    db.session.commit()
-    return jsonify({'message': 'Sensor created successfully'}), 201
-
-# Read all sensors
-@app.route('/sensor', methods=['GET'])
-def get_sensors():
-    sensors = Sensors.query.all()
-    result = []
-    for sensor in sensors:
-        result.append({'id': sensor.id,
-                       'date': sensor.date,
-                       'value': sensor.value,
-                       'maxValue': sensor.maxValue,
-                       'sensortype': sensor.sensortype.value})
-    return jsonify(result)
-
-# Update a sensor
-@app.route('/sensor/<int:sensor_id>', methods=['PUT'])
-def update_sensor(sensor_id):
-    sensor = Sensors.query.get(sensor_id)
-    if sensor:
-        data = request.get_json()
-        sensor.date = data['date']
-        sensor.value = data['value']
-        sensor.maxValue = data['maxValue']
-        sensor.sensortype = SensorType[data['sensortype']]
-        db.session.commit()
-        return jsonify({'message': 'Sensor updated successfully'})
-    else:
-        return jsonify({'message': 'Sensor not found'}), 404
-
-# Delete a sensor
-@app.route('/sensor/<int:sensor_id>', methods=['DELETE'])
-def delete_sensor(sensor_id):
-    sensor = Sensors.query.get(sensor_id)
-    if sensor:
-        db.session.delete(sensor)
-        db.session.commit()
-        return jsonify({'message': 'Sensor deleted successfully'})
-    else:
-        return jsonify({'message': 'Sensor not found'}), 404
+@mqtt.on_message()
+def handle_mqtt_message(client, userdata, message):
+    data = dict(
+        topic=message.topic,
+        value=message.payload.decode()
+    )
+    date = datetime.now()
+    match data["topic"]:
+        case 'datacenter/temperature':
+            mysqlClient.insert_temperature(value=data['value'], date=date)
+        case 'maison/salon/humidity':
+            mysqlClient.insert_humidity(value=data['value'], date=date)
+        case 'maison/salon/gas':
+            mysqlClient.insert_gas(value=data['value'], date=date)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    socketio.run(app, host='127.0.0.1', port=5000, use_reloader=False, debug=True)
