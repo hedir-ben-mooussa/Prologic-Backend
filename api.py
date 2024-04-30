@@ -7,13 +7,14 @@ from flask import Flask, jsonify
 from flask_mqtt import Mqtt
 from flask_socketio import SocketIO
 from flask_bootstrap import Bootstrap
-
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 app.app_context()
 
 app.config['TEMPLATES_AUTO_RELOAD'] = True
-app.config['MQTT_BROKER_URL'] = '192.168.1.18'
+app.config['MQTT_BROKER_URL'] = '172.19.14.118'
 app.config['MQTT_BROKER_PORT'] = 1883
 app.config['MQTT_USERNAME'] = ''
 app.config['MQTT_PASSWORD'] = ''
