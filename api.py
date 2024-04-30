@@ -9,12 +9,15 @@ from flask_socketio import SocketIO
 from flask_bootstrap import Bootstrap
 from flask_cors import CORS
 
+
+
+
 app = Flask(__name__)
 CORS(app)
 app.app_context()
 
 app.config['TEMPLATES_AUTO_RELOAD'] = True
-app.config['MQTT_BROKER_URL'] = '172.19.14.118'
+app.config['MQTT_BROKER_URL'] = '172.19.14.48'
 app.config['MQTT_BROKER_PORT'] = 1883
 app.config['MQTT_USERNAME'] = ''
 app.config['MQTT_PASSWORD'] = ''
@@ -65,6 +68,10 @@ def handle_mqtt_message(client, userdata, message):
             mysqlClient.insert_humidity(value=data['value'], date=date)
         case 'maison/salon/gas':
             mysqlClient.insert_gas(value=data['value'], date=date)
+
+
+
+   
 
 if __name__ == '__main__':
     socketio.run(app, host='127.0.0.1', port=5000, use_reloader=False, debug=True)
