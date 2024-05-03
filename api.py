@@ -27,6 +27,8 @@ bootstrap = Bootstrap(app)
 
 mysqlClient = MySQLSingleton(user='root', password='',host='localhost', database='prologic_db')
 
+notification_topic = 'notification/temperature'
+
 @app.route('/getTemperature', methods=["GET"])
 def getTemperature():
     temperature_values = mysqlClient.get_temperature_values()
@@ -58,13 +60,18 @@ def handle_mqtt_message(client, userdata, message):
         value=message.payload.decode()
     )
     date = datetime.now()
+    
     match data["topic"]:
         case 'datacenter/temperature':
             mysqlClient.insert_temperature(value=data['value'], date=date)
+            if float(data['value']) > 20:
+            # Publish a notification message if temperature exceeds 20°C
+             mqtt.publish(notification_topic, "Temperature exceeds 20°C")
         case 'maison/salon/humidity':
             mysqlClient.insert_humidity(value=data['value'], date=date)
         case 'maison/salon/gas':
             mysqlClient.insert_gas(value=data['value'], date=date)
+    
 
 if __name__ == '__main__':
     socketio.run(app, host='127.0.0.1', port=5000, use_reloader=False, debug=True)
