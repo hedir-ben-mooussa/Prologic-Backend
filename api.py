@@ -8,6 +8,7 @@ from flask_mqtt import Mqtt
 from flask_socketio import SocketIO
 from flask_bootstrap import Bootstrap
 from flask_cors import CORS
+from services.facial_recognition import recognize_face_service, uploadService
 
 app = Flask(__name__)
 CORS(app)
@@ -25,7 +26,7 @@ mqtt = Mqtt(app)
 socketio = SocketIO(app)
 bootstrap = Bootstrap(app)
 
-mysqlClient = MySQLSingleton(user='root', password='',host='localhost', database='prologic_db')
+mysqlClient = MySQLSingleton(user='root', password='',host='127.0.0.1',port="3306", database='prologic_db')
 
 notification_topic = 'notification/temperature'
 
@@ -72,6 +73,13 @@ def handle_mqtt_message(client, userdata, message):
         case 'maison/salon/gas':
             mysqlClient.insert_gas(value=data['value'], date=date)
     
+@app.route('/upload', methods=['POST'])
+def upload():
+    return uploadService()
+
+@app.route('/recognize_face', methods=['POST'])
+def recognize_face():
+    return recognize_face_service()
 
 if __name__ == '__main__':
     socketio.run(app, host='127.0.0.1', port=5000, use_reloader=False, debug=True)

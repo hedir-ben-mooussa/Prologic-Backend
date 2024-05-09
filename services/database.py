@@ -5,16 +5,22 @@ from datetime import datetime
 class MySQLSingleton:
     _instance = None
 
+    def ensure_connection(self):
+        try:
+            self._connection.ping(reconnect=True, attempts=3, delay=5)  
+        except mysql.connector.Error as err:
+            self._connection = self._connect()  
+
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
             cls._instance = super().__new__(cls)
             cls._instance._connection = cls._instance._connect(*args, **kwargs)
         return cls._instance
 
-    def _connect(self, user, password, host, database):
+    def _connect(self, user, password, host, database,port):
         try:
             connection = mysql.connector.connect(user=user, password=password,
-                                                  host=host, database=database)
+                                                  host=host, database=database,port=port)
             print("Connected to MySQL database")
             return connection
         except mysql.connector.Error as err:
@@ -41,6 +47,10 @@ class MySQLSingleton:
             cursor.close()
         except mysql.connector.Error as err:
             print("Error:", err)
+            if err.errno == errorcode.CR_SERVER_LOST:
+                 self.ensure_connection()
+            else:
+                 raise
 
     def insert_humidity(self, value, date):
         try:
@@ -50,6 +60,10 @@ class MySQLSingleton:
             cursor.close()
         except mysql.connector.Error as err:
             print("Error:", err)
+            if err.errno == errorcode.CR_SERVER_LOST:
+                 self.ensure_connection()
+            else:
+                 raise
 
     def insert_gas(self, value, date):
         try:
@@ -59,6 +73,10 @@ class MySQLSingleton:
             cursor.close()
         except mysql.connector.Error as err:
             print("Error:", err)
+            if err.errno == errorcode.CR_SERVER_LOST:
+                 self.ensure_connection()
+            else:
+                 raise
     
     def get_temperature_values(self):
         try:
@@ -66,9 +84,20 @@ class MySQLSingleton:
             cursor.execute("SELECT value, date FROM temperature")
             values = cursor.fetchall()
             cursor.close()
-            return values
+            result = []
+            for row in values:
+                result.append({
+                    'value': row[0],
+                    'date': row[1],  # Assuming the column name is 'value'
+                    # Add other columns as needed
+                })
+            return result
         except mysql.connector.Error as err:
             print("Error:", err)
+            if err.errno == errorcode.CR_SERVER_LOST:
+                 self.ensure_connection()
+            else:
+                 raise
             return []
 
     def get_humidity_values(self):
@@ -77,9 +106,20 @@ class MySQLSingleton:
             cursor.execute("SELECT value, date FROM humidity")
             values = cursor.fetchall()
             cursor.close()
-            return values
+            result = []
+            for row in values:
+                result.append({
+                    'value': row[0],
+                    'date': row[1],  # Assuming the column name is 'value'
+                    # Add other columns as needed
+                })
+            return result
         except mysql.connector.Error as err:
             print("Error:", err)
+            if err.errno == errorcode.CR_SERVER_LOST:
+                 self.ensure_connection()
+            else:
+                 raise
             return []
 
     def get_gas_values(self):
@@ -88,8 +128,19 @@ class MySQLSingleton:
             cursor.execute("SELECT value, date FROM gas")
             values = cursor.fetchall()
             cursor.close()
-            return values
+            result = []
+            for row in values:
+                result.append({
+                    'value': row[0],
+                    'date': row[1],  # Assuming the column name is 'value'
+                    # Add other columns as needed
+                })
+            return result
         except mysql.connector.Error as err:
             print("Error:", err)
+            if err.errno == errorcode.CR_SERVER_LOST:
+                 self.ensure_connection()
+            else:
+                 raise
             return []
         
