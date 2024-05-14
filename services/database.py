@@ -7,9 +7,11 @@ class MySQLSingleton:
 
     def ensure_connection(self):
         try:
-            self._connection.ping(reconnect=True, attempts=3, delay=5)  
+            self._connection.ping(reconnect=True, attempts=5, delay=5)  
         except mysql.connector.Error as err:
-            self._connection = self._connect()  
+           
+                self._connection = self._connect()
+             
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
@@ -97,6 +99,7 @@ class MySQLSingleton:
             if err.errno == errorcode.CR_SERVER_LOST:
                  self.ensure_connection()
             else:
+                 self.ensure_connection()
                  raise
             return []
 
@@ -119,6 +122,7 @@ class MySQLSingleton:
             if err.errno == errorcode.CR_SERVER_LOST:
                  self.ensure_connection()
             else:
+                 self.ensure_connection()
                  raise
             return []
 
@@ -141,6 +145,7 @@ class MySQLSingleton:
             if err.errno == errorcode.CR_SERVER_LOST:
                  self.ensure_connection()
             else:
+                 self.ensure_connection()
                  raise
             return []
         
