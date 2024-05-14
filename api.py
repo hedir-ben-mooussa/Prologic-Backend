@@ -8,13 +8,16 @@ from flask_mqtt import Mqtt
 from flask_socketio import SocketIO
 from flask_bootstrap import Bootstrap
 from flask_cors import CORS
+from services.facial_recognition import recognize_face_service, uploadService
 
 app = Flask(__name__)
-CORS(app)
+# CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
+
 app.app_context()
 
 app.config['TEMPLATES_AUTO_RELOAD'] = True
-app.config['MQTT_BROKER_URL'] = '172.19.14.118'
+app.config['MQTT_BROKER_URL'] = '192.168.1.23'
 app.config['MQTT_BROKER_PORT'] = 1883
 app.config['MQTT_USERNAME'] = ''
 app.config['MQTT_PASSWORD'] = ''
@@ -25,9 +28,9 @@ mqtt = Mqtt(app)
 socketio = SocketIO(app)
 bootstrap = Bootstrap(app)
 
-mysqlClient = MySQLSingleton(user='root', password='',host='localhost', database='prologic_db')
+mysqlClient = MySQLSingleton(user='root', password='',host='127.0.0.1',port="3306", database='prologic_db')
 
-notification_topic = 'notification/temperature'
+
 
 @app.route('/getTemperature', methods=["GET"])
 def getTemperature():
@@ -48,9 +51,9 @@ def getHumidity():
 @mqtt.on_connect()
 def handle_connect(client, userdata, flags, rc):
     mqtt.subscribe('datacenter/temperature')
-    mqtt.subscribe('maison/salon/humidity')
-    mqtt.subscribe('maison/salon/gas')
-    mqtt.subscribe('maison/salon/flame')
+    mqtt.subscribe('datacenter/humidity')
+    mqtt.subscribe('datacenter/gas')
+    mqtt.subscribe('datacenter/flame')
     print('MQTT Connected')
 
 @mqtt.on_message()
@@ -63,15 +66,22 @@ def handle_mqtt_message(client, userdata, message):
     
     match data["topic"]:
         case 'datacenter/temperature':
+            print(data['value'])
             mysqlClient.insert_temperature(value=data['value'], date=date)
-            if float(data['value']) > 20:
-            # Publish a notification message if temperature exceeds 20°C
-             mqtt.publish(notification_topic, "Temperature exceeds 20°C")
-        case 'maison/salon/humidity':
+        case 'datacenter/humidity':
+            print(data['value'])
             mysqlClient.insert_humidity(value=data['value'], date=date)
-        case 'maison/salon/gas':
+        case 'datacenter/gas':
+            print(data['value'])
             mysqlClient.insert_gas(value=data['value'], date=date)
     
+@app.route('/upload', methods=['POST'])
+def upload():
+    return uploadService()
+
+@app.route('/recognize_face', methods=['POST'])
+def recognize_face():
+    return recognize_face_service()
 
 if __name__ == '__main__':
     socketio.run(app, host='127.0.0.1', port=5000, use_reloader=False, debug=True)
