@@ -41,6 +41,19 @@ class MySQLSingleton:
         else:
             print("Not connected to any database")
 
+    def add_face(self, name, filename):
+        try:
+            cursor = self._connection.cursor()
+            cursor.execute("INSERT INTO users (name, picture) VALUES (%s, %s)", (name, filename))
+            self._connection.commit()
+            cursor.close()
+        except mysql.connector.Error as err:
+            print("Error:", err)
+            if err.errno == errorcode.CR_SERVER_LOST:
+                 self.ensure_connection()
+            else:
+                 raise
+
     def insert_temperature(self, value, date):
         try:
             cursor = self._connection.cursor()
@@ -79,7 +92,20 @@ class MySQLSingleton:
                  self.ensure_connection()
             else:
                  raise
-    
+
+    def get_saved_users(self):
+        cursor = self._connection.cursor()
+        cursor.execute("SELECT * FROM users")
+        values = cursor.fetchall()
+        result = []
+        for row in values:
+            result.append({
+                'id': row[0],
+                'name': row[1],
+                'picture': row[2],
+            })
+        return result
+
     def get_temperature_values(self):
         try:
             cursor = self._connection.cursor()

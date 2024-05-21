@@ -9,17 +9,6 @@ UPLOAD_FOLDER = "./temp/"
 FACES_FOLDER = "./faces/"
 
 
-def uploadService():
-    file = request.files['images']
-    filepath = os.path.join(FACES_FOLDER, file.filename)
-
-    if os.path.exists(filepath):
-        os.remove(filepath)
-
-    file.save(filepath)
-    return jsonify({'message': 'Image saved successfully'})
-
-
 def recognize_face_service():
     data_json = request.get_json()
     img_decoded = base64.b64decode(
