@@ -1,6 +1,5 @@
 import eventlet
-
-from services.video import SimpleFacerec
+# from services.video import SimpleFacerec
 eventlet.monkey_patch()
 import json, os
 import face_recognition
@@ -14,6 +13,8 @@ from flask_cors import CORS
 from services.facial_recognition import recognize_face_service
 from werkzeug.utils import secure_filename
 import cv2
+
+
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = "faces"
@@ -92,57 +93,61 @@ def upload():
     mysqlClient.add_face(name, filename)
     return jsonify({'message': 'Image saved successfully'})
 
-# @app.route('/recognize_face', methods=['POST'])
-# def recognize_face():
-#     file = request.files['image']
-#     filename = secure_filename(file.filename)
-#     file.save(os.path.join(app.config['TEMP_FOLDER'], filename))
-#     unknown_image = face_recognition.load_image_file(os.path.join(app.config['TEMP_FOLDER'], filename))
-#     try:
-#         unknown_encoding = face_recognition.face_encodings(unknown_image)[0]
-#     except:
-#         return jsonify({"status":False, "reason": "Cannot detect a human face."})
-#     faces = mysqlClient.get_saved_users()
-#     encodings = []
-#     for face in faces:
-#         known_image = face_recognition.load_image_file(os.path.join(app.config['UPLOAD_FOLDER'], face["picture"]))
-#         known_encoding = face_recognition.face_encodings(known_image)[0]
-#         encodings.append(known_encoding)
-#     results = face_recognition.compare_faces(encodings, unknown_encoding)
-#     for resultIndex in range(len(results)):
-#         if results[resultIndex]:
-#             faces[resultIndex]["status"] = True
-#             return jsonify(faces[resultIndex])
-#     return jsonify({"status":False, "reason": "User not signed up"})
-
-sfr = SimpleFacerec()
-sfr.load_encoding_images("faces/")
 @app.route('/recognize_face', methods=['POST'])
-def run_python_code():
+def recognize_face():
+    file = request.files['image']
+    filename = secure_filename(file.filename)
+    file.save(os.path.join(app.config['TEMP_FOLDER'], filename))
+    unknown_image = face_recognition.load_image_file(os.path.join(app.config['TEMP_FOLDER'], filename))
+    try:
+        unknown_encoding = face_recognition.face_encodings(unknown_image)[0]
+    except:
+        return jsonify({"status":False, "reason": "Cannot detect a human face."})
+    faces = mysqlClient.get_saved_users()
+    encodings = []
+    for face in faces:
+        known_image = face_recognition.load_image_file(os.path.join(app.config['UPLOAD_FOLDER'], face["picture"]))
+        known_encoding = face_recognition.face_encodings(known_image)[0]
+        encodings.append(known_encoding)
+    results = face_recognition.compare_faces(encodings, unknown_encoding)
+    for resultIndex in range(len(results)):
+        if results[resultIndex]:
+            faces[resultIndex]["status"] = True
+            return jsonify(faces[resultIndex])
+    return jsonify({"status":False, "reason": "User not signed up"})
 
-    cap = cv2.VideoCapture(0)
-    recognized = False
-    x = 0
+# sfr = SimpleFacerec()
+# sfr.load_encoding_images("faces/")
+# @app.route('/recognize_face', methods=['POST'])
+# def run_python_code():
 
-    while True:
-        ret, frame = cap.read()
+#     cap = cv2.VideoCapture(0)
+#     recognized = False
+#     nbusers = 0
 
-        face_locations, face_names = sfr.detect_known_faces(frame)
-        for face_loc, name in zip(face_locations, face_names):
-            if name != "Unknown" and not recognized:
-                print("Recognized:", name)
-                recognized = True
-                x = 1
-                print("x:", x)
+#     while True:
+#         ret, frame = cap.read()
 
-        cv2.imshow("Frame", frame)
-        if cv2.waitKey(1) & 0xFF == ord('s'):
-            break
+#         face_locations, face_names = sfr.detect_known_faces(frame)
+#         for face_loc, name in zip(face_locations, face_names):
+#             if name != "Unknown" and not recognized:
+#                 print("Recognized:", name)
+#                 recognized = True
+#                 nbusers += 1
+#                 print("nbusers:", nbusers)
 
-    cap.release()
-    cv2.destroyAllWindows()
-    x = 0
-    print("x:", x)
+#         cv2.imshow("Frame", frame)
+#         if cv2.waitKey(1) & 0xFF == ord('s'):
+#             break
+
+#     cap.release()
+#     cv2.destroyAllWindows()
+#     return jsonify({
+#        "nbusers:" : nbusers ,
+#        "isrecognise" : recognized
+#   })
+
+
 
 
 if __name__ == '__main__':
